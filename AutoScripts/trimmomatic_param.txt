@@ -1,0 +1,2 @@
+input/SRR14555859_1.fastq input/SRR14555859_2.fastq output/Trimmed/trim_SRR14555859_1.fastq output/Trimmed/Unpaired/up_SRR14555859_1.fastq output/Trimmed/trim_SRR14555859_2.fastq output/Trimmed/Unpaired/up_SRR14555859_2.fastq
+input/SRR14555860_1.fastq input/SRR14555860_2.fastq output/Trimmed/trim_SRR14555860_1.fastq output/Trimmed/Unpaired/up_SRR14555860_1.fastq output/Trimmed/trim_SRR14555860_2.fastq output/Trimmed/Unpaired/up_SRR14555860_2.fastq
