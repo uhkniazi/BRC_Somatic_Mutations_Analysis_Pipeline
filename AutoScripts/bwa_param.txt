@@ -1,0 +1,2 @@
+input/trim_SRR14555859_1.fastq.gz input/trim_SRR14555859_2.fastq.gz output/Aligned/SRR14555859_1.fastq.gz.sam
+input/trim_SRR14555860_1.fastq.gz input/trim_SRR14555860_2.fastq.gz output/Aligned/SRR14555860_1.fastq.gz.sam
