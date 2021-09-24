@@ -38,7 +38,7 @@ dir.create('AutoScripts')
 oFile.param = file('AutoScripts/samtools_param.txt', 'wt')
 
 temp = lapply(1:nrow(dfData), function(x){
-  lf = list(paste0(as.character(dfData$Run[x]), '.fastq'))
+  lf = list(paste0(as.character(dfData$Run[x]), '_1.fastq'))
   # write samtools command variables
   in.s1 = paste0(cvInput, lf[[1]], '.sam')
   # output file in bam format
