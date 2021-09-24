@@ -1,0 +1,2 @@
+input/SRR14555859.fastq.sam input/SRR14555859.fastq.bam input/SRR14555859.fastq_q25.bam input/SRR14555859.fastq_q25_sort.bam input/SRR14555859.fastq_q25_sort_rd.bam
+input/SRR14555860.fastq.sam input/SRR14555860.fastq.bam input/SRR14555860.fastq_q25.bam input/SRR14555860.fastq_q25_sort.bam input/SRR14555860.fastq_q25_sort_rd.bam
