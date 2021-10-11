@@ -7,8 +7,13 @@
 ## set variables and source libraries
 source('header.R')
 
-dfData = read.csv(file.choose(), header=T)
+setwd(gcRemoteDir)
+csFiles = list.files('BRC_Somatic_Mutations_Analysis_Pipeline/dataExternal/pilotProjectDump/', 
+                     pattern = '*.fastq')
 
+#dfData = read.csv(file.choose(), header=T)
+dfData = data.frame(Run=I(csFiles))
+setwd(gcswd)
 # set header variables 
 cvShell = '#!/bin/bash -l'
 cvJobName = '#SBATCH --job-name=trim-array'
@@ -28,7 +33,7 @@ cvMail = '#SBATCH --mail-type=END,FAIL'
 # set array job loop
 #length(cvQueries)
 dim(dfData)
-cvArrayJob = '#SBATCH --array=1-2'
+cvArrayJob = '#SBATCH --array=1-8'
 
 # set the directory names for trimmomatic
 cvInput = 'input/'
@@ -42,10 +47,12 @@ dir.create('AutoScripts')
 oFile.param = file('AutoScripts/trimmomatic_param.txt', 'wt')
 
 ## check file names
-f = list.files('dataExternal/remote/raw/temp_SRP319967/', pattern = 'fastq')
+#f = list.files('dataExternal/remote/raw/temp_SRP319967/', pattern = 'fastq')
 dfData$Run
+# get unique file name after removing forward / reverse marks
+csFiles = unique(gsub('_\\d\\.fastq.gz', '', as.character(dfData$Run)))
 
-temp = sapply(1:nrow(dfData), function(x){
+temp = sapply(seq_along(csFiles), function(x){
   # get the file names
   #dfFiles = dbGetQuery(db, x)
   # check for null return
@@ -58,9 +65,10 @@ temp = sapply(1:nrow(dfData), function(x){
   # d = as.character(d)
   # d[d == 'TRUE'] = 'R1'
   # d[d == 'FALSE'] = 'R2'
-  f = as.character(dfData$Run[x])
-  lf = list(paste0(f, '_1.fastq'),
-            paste0(f, '_2.fastq'))
+  # f = as.character(dfData$Run[x])
+  lf = list(paste0(csFiles[x], '_1.fastq.gz'),
+            paste0(csFiles[x], '_2.fastq.gz'))
+  
   # write trimmomatic command
   in.r1 = paste0(cvInput, lf[[1]])
   in.r2 = paste0(cvInput, lf[[2]])

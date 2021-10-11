@@ -8,7 +8,7 @@
 #g_pid = 22
 #g_did = 43
 gcswd = getwd()
-gcRemoteDir = "/run/user/1000/gvfs/sftp:host=10.202.64.29,user=k1625253/users/k1625253/brc_scratch/Data/ProjectsData/"
+gcRemoteDir = "/run/user/1000/gvfs/sftp:host=login.rosalind.kcl.ac.uk,user=k1625253/users/k1625253/scratch/old-scratch_rosalind-legacy-import_2020-01-28/Data/"
 
 p.old = par()
 
