@@ -3,7 +3,7 @@
 #SBATCH --array=1-8
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --time=0-05:005:00
+#SBATCH --time=5-23:05:00
 #SBATCH --partition brc
 #SBATCH --mem-per-cpu=10000MB
 #SBATCH --mail-type=END,FAIL
