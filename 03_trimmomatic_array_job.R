@@ -20,7 +20,7 @@ cvJobName = '#SBATCH --job-name=trim-array'
 cvNodes = '#SBATCH --nodes=1'
 cvProcessors = '#SBATCH --ntasks=1'
 # format d-hh:mm:ss
-cvRuntime = '#SBATCH --time=0-05:005:00'
+cvRuntime = '#SBATCH --time=5-23:005:00'
 cvPartition = '#SBATCH --partition brc'
 # How much memory you need.
 # --mem will define memory per node and

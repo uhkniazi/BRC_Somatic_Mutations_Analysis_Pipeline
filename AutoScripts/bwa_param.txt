@@ -1,2 +1,8 @@
-input/trim_SRR14555859_1.fastq.gz input/trim_SRR14555859_2.fastq.gz output/Aligned/SRR14555859_1.fastq.gz.sam
-input/trim_SRR14555860_1.fastq.gz input/trim_SRR14555860_2.fastq.gz output/Aligned/SRR14555860_1.fastq.gz.sam
+input/trim_WTCHG_894903_73055377_1.fastq.gz input/trim_WTCHG_894903_73055377_2.fastq.gz output/Aligned/trim_WTCHG_894903_73055377_1.fastq.gz.sam
+input/trim_WTCHG_894903_73065378_1.fastq.gz input/trim_WTCHG_894903_73065378_2.fastq.gz output/Aligned/trim_WTCHG_894903_73065378_1.fastq.gz.sam
+input/trim_WTCHG_894903_73075379_1.fastq.gz input/trim_WTCHG_894903_73075379_2.fastq.gz output/Aligned/trim_WTCHG_894903_73075379_1.fastq.gz.sam
+input/trim_WTCHG_894903_73085380_1.fastq.gz input/trim_WTCHG_894903_73085380_2.fastq.gz output/Aligned/trim_WTCHG_894903_73085380_1.fastq.gz.sam
+input/trim_WTCHG_894903_73095381_1.fastq.gz input/trim_WTCHG_894903_73095381_2.fastq.gz output/Aligned/trim_WTCHG_894903_73095381_1.fastq.gz.sam
+input/trim_WTCHG_894903_73105382_1.fastq.gz input/trim_WTCHG_894903_73105382_2.fastq.gz output/Aligned/trim_WTCHG_894903_73105382_1.fastq.gz.sam
+input/trim_WTCHG_894903_73115383_1.fastq.gz input/trim_WTCHG_894903_73115383_2.fastq.gz output/Aligned/trim_WTCHG_894903_73115383_1.fastq.gz.sam
+input/trim_WTCHG_894903_73125384_1.fastq.gz input/trim_WTCHG_894903_73125384_2.fastq.gz output/Aligned/trim_WTCHG_894903_73125384_1.fastq.gz.sam
