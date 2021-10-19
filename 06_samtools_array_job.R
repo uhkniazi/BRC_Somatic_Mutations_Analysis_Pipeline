@@ -1,13 +1,13 @@
 # File: 06_samtools_array_job.R
 # Auth: umar.niazi@kcl.as.uk
 # DESC: create a parameter file and shell script to run array job on hpc
-# Date: 24/9/2021
+# Date: 19/10/2021
 
 
 ## set variables and source libraries
 source('header.R')
 
-dfData = read.csv(file.choose(), header=T)
+csFiles = list.files('dataExternal/remote/Aligned/', '*.sam')
 
 # set header variables 
 cvShell = '#!/bin/bash -l'
@@ -15,19 +15,19 @@ cvJobName = '#SBATCH --job-name=samtools-array'
 cvNodes = '#SBATCH --nodes=1'
 cvProcessors = '#SBATCH --ntasks=1'
 # format d-hh:mm:ss
-cvRuntime = '#SBATCH --time=1-05:05:00'
+cvRuntime = '#SBATCH --time=6-05:05:00'
 cvPartition = '#SBATCH --partition brc'
 # How much memory you need.
 # --mem will define memory per node and
 # --mem-per-cpu will define memory per CPU/core. Choose one of those.
-cvMemoryReserve = '#SBATCH --mem-per-cpu=2000MB'
+cvMemoryReserve = '#SBATCH --mem-per-cpu=5000MB'
 # Turn on mail notification. There are many possible self-explaining values:
 # NONE, BEGIN, END, FAIL, ALL (including all aforementioned)
 # For more values, check "man sbatch"
 cvMail = '#SBATCH --mail-type=END,FAIL'
 # set array job loop
-dim(dfData)
-cvArrayJob = '#SBATCH --array=1-2'
+length(csFiles)
+cvArrayJob = '#SBATCH --array=1-8'
 
 # set the directory names
 cvInput = 'input/'
@@ -36,24 +36,27 @@ cvInput = 'input/'
 # create a parameter file and shell script
 dir.create('AutoScripts')
 oFile.param = file('AutoScripts/samtools_param.txt', 'wt')
+csFiles = gsub('_1.fastq.gz.sam', '', csFiles)
+csFiles = gsub('trim_', '', csFiles)
 
-temp = lapply(1:nrow(dfData), function(x){
-  lf = list(paste0(as.character(dfData$Run[x]), '_1.fastq'))
+temp = lapply(seq_along(csFiles), function(x){
+  lf = csFiles[x]
   # write samtools command variables
-  in.s1 = paste0(cvInput, lf[[1]], '.sam')
+  in.s1 = paste0(cvInput,'trim_', lf, '.fastq.gz.sam')
   # output file in bam format
-  s2 = paste0(cvInput, lf[[1]], '.bam')
-  # remove low quality reads below 25
-  s3 = paste0(cvInput, lf[[1]], '_q25.bam')
-  # sort the file
-  s4 = paste0(cvInput, lf[[1]], '_q25_sort.bam')
-  # remove duplicates
-  s5 = paste0(cvInput, lf[[1]], '_q25_sort_rd.bam')
-  p1 = paste(in.s1, s2, s3, s4, s5, sep=' ')
+  s2 = paste0(cvInput, lf, '.bam')
+  # remove MAPQ quality reads below 30
+  s3 = paste0(cvInput, lf, '_q30.bam')
+  # sort the file by name i.e. the QNAME field
+  s4 = paste0(cvInput, lf, '_q30_sortn.bam')
+  # fix mate
+  s5 = paste0(cvInput, lf, '_q30_sortn_fixm.bam')
+  # sort by position
+  s6 = paste0(cvInput, lf, '_q30_fixm_sortc.bam')
+  # remove or mark duplicates
+  s7 = paste0(cvInput, lf, '_q30_fixm_sortc_rd.bam')
+  p1 = paste(in.s1, s2, s3, s4, s5, s6, s7, sep=' ')
   writeLines(p1, oFile.param)
-  # return(data.frame(idSample=dfFiles$idSample[1], name=c(s2, s4, s5), type=c('original bam', 'quality 10 sorted bam',
-  #                                                                            'quality 10 sorted bam duplicates removed'), 
-  #                   group1=dfFiles$group1[1]))
 })
 
 close(oFile.param)
@@ -68,7 +71,7 @@ writeLines(c('# make sure directory paths exist before running script'), oFile)
 writeLines('\n\n', oFile)
 
 # module load
-writeLines(c('module load apps/samtools/1.9.0-singularity'), oFile)
+writeLines(c('module load apps/samtools/1.10.0-singularity'), oFile)
 writeLines('\n\n', oFile)
 
 ## write array job lines
@@ -78,32 +81,41 @@ writeLines("# Parse parameter file to get variables.
            
            ins1=`sed -n ${number}p $paramfile | awk '{print $1}'`
            bamfile=`sed -n ${number}p $paramfile | awk '{print $2}'`
-           bamq25=`sed -n ${number}p $paramfile | awk '{print $3}'`
-           bamq25sort=`sed -n ${number}p $paramfile | awk '{print $4}'`
-           bamrd=`sed -n ${number}p $paramfile | awk '{print $5}'`
+           bamq30=`sed -n ${number}p $paramfile | awk '{print $3}'`
+           bamq30sortn=`sed -n ${number}p $paramfile | awk '{print $4}'`
+           bamq30sortnFixm=`sed -n ${number}p $paramfile | awk '{print $5}'`
+           bamq30FixmSortc=`sed -n ${number}p $paramfile | awk '{print $6}'`
+           bamrd=`sed -n ${number}p $paramfile | awk '{print $7}'`
            
            # 9. Run the program.", oFile)
 
 # sam to bam
 p1 = paste('samtools view -b -S', '$ins1', '>', '$bamfile', sep=' ')
 com1 = paste(p1)
-# remove low quality reads
-p1 = paste('samtools view -b -q 25', '$bamfile', '>', '$bamq25', sep=' ')
+# remove low quality MAPQ reads
+p1 = paste('samtools view -b -q 30', '$bamfile', '>', '$bamq30', sep=' ')
 com2 = paste(p1)
-# sort the file
-p1 = paste('samtools sort -o', '$bamq25sort', '$bamq25', sep=' ')
+# sort the file by name
+p1 = paste('samtools sort -n -o', '$bamq30sortn', '$bamq30', sep=' ')
 com3 = paste(p1)
-# create index before duplicate removal
-p1 = paste('samtools index', '$bamq25sort', sep=' ')
-com3.1 = paste(p1)
-# remove duplicates, for paired end reads
-p1 = paste('samtools rmdup', '$bamq25sort', '$bamrd', sep=' ')
+# fixmate step
+p1 = paste('samtools fixmate -m', '$bamq30sortn', '$bamq30sortnFixm', sep=' ')
 com4 = paste(p1)
-# create index
-p1 = paste('samtools index', '$bamrd', sep=' ')
+# sort file by coordinate
+p1 = paste('samtools sort -o', '$bamq30FixmSortc', '$bamq30sortnFixm', sep=' ')
 com5 = paste(p1)
 
-writeLines(c(com1, com2, com3, com3.1, com4, com5), oFile)
+# create index before duplicate removal
+p1 = paste('samtools index', '$bamq30FixmSortc', sep=' ')
+com5.1 = paste(p1)
+# mark and remove duplicates, for paired end reads
+p1 = paste('samtools markdup -r', '$bamq30FixmSortc', '$bamrd', sep=' ')
+com6 = paste(p1)
+# create index
+p1 = paste('samtools index', '$bamrd', sep=' ')
+com7 = paste(p1)
+
+writeLines(c(com1, com2, com3, com4, com5, com5.1, com6, com7), oFile)
 writeLines('\n\n', oFile)
 
 close(oFile)
