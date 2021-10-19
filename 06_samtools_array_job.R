@@ -42,7 +42,7 @@ csFiles = gsub('trim_', '', csFiles)
 temp = lapply(seq_along(csFiles), function(x){
   lf = csFiles[x]
   # write samtools command variables
-  in.s1 = paste0(cvInput,'trim_', lf, '.fastq.gz.sam')
+  in.s1 = paste0(cvInput,'trim_', lf, '_1.fastq.gz.sam')
   # output file in bam format
   s2 = paste0(cvInput, lf, '.bam')
   # remove MAPQ quality reads below 30
@@ -119,3 +119,4 @@ writeLines(c(com1, com2, com3, com4, com5, com5.1, com6, com7), oFile)
 writeLines('\n\n', oFile)
 
 close(oFile)
+
