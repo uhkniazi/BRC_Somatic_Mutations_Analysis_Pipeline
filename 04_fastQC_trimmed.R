@@ -15,77 +15,49 @@ source('CFastqQuality.R')
 # delete the file after source
 unlink('CFastqQuality.R')
 
-## connect to mysql database to get sample information
-library('RMySQL')
+# meta data
+dfSample = read.csv('dataExternal/fileList.csv', header=T, stringsAsFactors = F)
 
-##### connect to mysql database to get samples
-db = dbConnect(MySQL(), user='rstudio', password='12345', dbname='Projects', host='127.0.0.1')
-dbListTables(db)
-dbListFields(db, 'Sample')
-# another way to get the query, preferred
-g_did
-dfSample = dbGetQuery(db, "select * from Sample where idData=46;")
-# remove any whitespace from the names
-dfSample$title = gsub(" ", "", dfSample$title, fixed = T)
-head(dfSample)
-## get the file names from the files table
-dbListFields(db, 'File')
-
-## write query to get file names
-q = paste0('select File.*, Sample.id as sid, Sample.* from File, Sample where Sample.idData=46 AND Sample.id=File.idSample AND File.type="fastq"', ';')
-
-# df = lapply(q, function(x) dbGetQuery(db, x))
-# dfFiles = do.call(rbind, df)
-dfFiles = dbGetQuery(db, q)
-# close connection after getting data
-dbDisconnect(db)
-str(dfFiles)
-# remove redundant columns
-dfFiles = dfFiles[,-c(5,7)]
-#### get the names of the fastq files for first sequencing run
+#### get the names of the fastq files 
 setwd('dataExternal/remote/Trimmed/')
 csFiles = list.files('.', pattern = '*.gz', recursive = F)
 
-## drop the NA samples
-dfFiles = na.omit(dfFiles)
-dim(dfFiles)
+cvMatch = gsub('_\\d\\.fastq.gz', '', as.character(csFiles))
+cvMatch = gsub('trim_', '', cvMatch)
+i = match(cvMatch, dfSample$SampleID)
+dfFiles = data.frame(name=csFiles, id=dfSample$SampleID[i], group1=dfSample$Group[i],
+                     stringsAsFactors = F)
 
 # sanity check if all files present in directory
-dfFiles$name = paste('trim_', dfFiles$name, sep ='')
-table(dfFiles$name %in% csFiles)
 identical(dfFiles$name, csFiles)
-table(csFiles %in% dfFiles$name)
+
 ## create factors and variables for fastqqualitybatch object
-i = grep('_1.fq.gz', dfFiles$name)
+i = grep('_1.fastq.gz', dfFiles$name)
 fReadDirection = rep('2', times=nrow(dfFiles))
 fReadDirection[i] = '1'
 fReadDirection = factor(fReadDirection)
+# unique names
 i = dfFiles$group1
 table(i)
-i.2 = dfFiles$group2
-table(i.2)
+table(i, fReadDirection)
+
 # unique names for each file
-cNames = paste(i, i.2, dfFiles$idSample, as.character(fReadDirection),  sep='_')
+cNames = paste(i, dfFiles$id, as.character(fReadDirection),  sep='_')
 lMetaData = list(files=dfFiles)
 
 ob = CFastqQualityBatch(dfFiles$name, cNames, fReadDirection, lMetaData)
 
 setwd(gcswd)
-n = make.names(paste('CFastqQualityBatch post trimming data id 46 john rds'))
-n2 = paste0('~/Data/MetaData/', n)
+dir.create('results')
+n = make.names(paste('CFastqQualityBatch george pilot data rds'))
+n2 = paste0('results/', n)
 save(ob, file=n2)
-
-## note: comment out as this entry has been made in db
-db = dbConnect(MySQL(), user='rstudio', password='12345', dbname='Projects', host='127.0.0.1')
-dbListTables(db)
-dbListFields(db, 'MetaFile')
-df = data.frame(idData=g_did, name=n, type='rds', location='~/Data/MetaData/', comment='trim FASTQ quality checks on John FOG1 KO mouse data')
-#dbWriteTable(db, name = 'MetaFile', value=df, append=T, row.names=F)
-dbDisconnect(db)
 
 ### create the plots of interest
 getwd()
 
+# set short names for samples for plotting etc
+csShortNames = gsub('_WTCHG_894903', '', ob@csSampleNames)
 iGetReadCount(ob)
 barplot.readcount(ob)
 plot.alphabetcycle(ob)
@@ -105,7 +77,8 @@ unlink('CDiagnosticPlots.R')
 mBatch = mGetReadQualityByCycle(ob)
 dim(mBatch)
 mBatch[1:10, 1:4]
-
+colnames(mBatch)
+colnames(mBatch) = csShortNames
 ## creat an object of diagnostics class to make plots
 oDiag = CDiagnosticPlots(mBatch, 'Base Quality')
 
@@ -117,23 +90,14 @@ oDiag = CDiagnosticPlotsSetParameters(oDiag, l)
 
 fBatch = ob@fReadDirection
 str(ob@lMeta$files)
-d = ob@lMeta$files$description
-d = strsplit(d, ';')
-fBatch = factor(sapply(d, function(x) x[2]))
-d = strsplit(ob@lMeta$files$group3, '_')
 fBatch = factor(ob@lMeta$files$group1)
-fBatch = fBatch:factor(ob@lMeta$files$group2)
-f1 = factor(ob@lMeta$files$group2)
-f2 = factor(ob@lMeta$files$group3)
-f3 = factor(ob@lMeta$files$group1)
-fBatch = f1:f2
 levels(fBatch)
 ## try some various factors to make the plots of low dimensional summaries
 plot.mean.summary(oDiag, fBatch)
 plot.sigma.summary(oDiag, fBatch)
 boxplot.median.summary(oDiag, fBatch)
 plot.PCA(oDiag, fBatch, csLabels = ob@lMeta$files$idSample, cex=2)
-plot.dendogram(oDiag, fBatch, labels_cex = 0.4)
+plot.dendogram(oDiag, fBatch, labels_cex = 1)
 
 ## looking at alphabets 
 ## change direction and alphabet i.e. base as required
@@ -150,7 +114,7 @@ lAlphabets = lapply(i, function(x){
 mAlphabet = do.call(cbind, lapply(lAlphabets, function(x) return(x[,'C'])))
 dim(mAlphabet)
 i = grep('1', ob@fReadDirection)
-colnames(mAlphabet) = ob@lMeta$files$idSample[i]
+colnames(mAlphabet) = csShortNames[i]
 oDiag.2 = CDiagnosticPlots(mAlphabet, 'forward base C')
 
 ## turning off automatic jitters
@@ -160,47 +124,39 @@ l$PCA.jitter = F; l$HC.jitter = F;
 oDiag.2 = CDiagnosticPlotsSetParameters(oDiag.2, l)
 
 i = grep('1', ob@fReadDirection)
-fBatch = factor(ob@lMeta$files$group2[i])
+fBatch = factor(ob@lMeta$files$group1[i])
 length(fBatch)
-f1 = factor(ob@lMeta$files$group2[i])
-f2 = factor(ob@lMeta$files$group3[i])
-f3 = factor(ob@lMeta$files$group1[i])
-fBatch = f1:f2#:f3
 levels(fBatch)
 ## try some various factors to make the plots of low dimensional summaries
 plot.mean.summary(oDiag.2, fBatch)
 plot.sigma.summary(oDiag.2, fBatch)
 boxplot.median.summary(oDiag.2, fBatch)
 plot.PCA(oDiag.2, fBatch, cex=2)
-plot.PCA(oDiag.2, fBatch, xlim=c(-10, 10), cex=2)
-plot.dendogram(oDiag.2, fBatch, labels_cex = 0.8)
+plot.PCA(oDiag.2, fBatch, xlim=c(-5, 5), cex=2, ylim=c(-1, 0.5))
+plot.dendogram(oDiag.2, fBatch, labels_cex = 1)
 
 ############ make a figure for the read counts
 mRC = as.matrix(iGetReadCount(ob))
-rownames(mRC) = ob@lMeta$files$id
+dim(mRC)
+rownames(mRC) = csShortNames
 hc = hclust(dist(mRC))
-# lane
-d = ob@lMeta$files$description
-d = strsplit(d, ';')
-fLane = factor(sapply(d, function(x) x[2]))
-f1 = factor(ob@lMeta$files$group2)
-f2 = factor(ob@lMeta$files$group3)
-f3 = factor(ob@lMeta$files$group1)
-fBatch = f1:f2
+plot(hc)
+fBatch = factor(ob@lMeta$files$group1)
 levels(fBatch)
 # get a clustering variable
-c = cutree(hc, h=2)
+c = cutree(hc, k = 3)
 table(c)
 dfReads = data.frame(mRC, c, fBatch)
 aggregate(dfReads$mRC, by=list(c), mean)
 table(c)
+aggregate(dfReads$mRC, by=list(fBatch, c), mean)
 
 col.p = rainbow(nlevels(fBatch))
 dend = as.dendrogram(hc)
 # Assigning the labels of dendrogram object with new colors:
 labels_colors(dend) = col.p[as.numeric(fBatch)][order.dendrogram(dend)]
-labels_cex(dend) = 0.5
+labels_cex(dend) = 1
 # Plotting the new dendrogram
 plot(dend, main=paste('Hierarchical clustering of distance matrix for read counts'),
-     xlab='', sub='Coloured on Genotype:Replicate')
+     xlab='', sub='Coloured on Genotype')
 abline(h = 2)
