@@ -11,8 +11,10 @@ library(TxDb.Hsapiens.UCSC.hg38.knownGene)
 library(GenomicRanges)
 library(org.Hs.eg.db)
 
+dfGenes = read.csv('dataExternal/pilotProjectGeneList.csv', stringsAsFactors = F,
+                   header=F)
 # select some genes of interest
-cvSymbols = c('NOTCH1', 'TP53', 'TP63')
+cvSymbols = dfGenes$V1[1:10]
 dfGenes = AnnotationDbi::select(org.Hs.eg.db, keys = cvSymbols, 
                                 columns = c('ENTREZID'),
                                 keytype = 'SYMBOL')
@@ -30,8 +32,8 @@ strand(oGRquery) = '*'
 #### set working directory to appropriate location with bam files
 setwd('dataExternal/remote/')
 setwd('Aligned/')
-csFiles = list.files('.', pattern = '*.bam$', recursive = T)
-csFiles = csFiles[c(4, 8)]
+csFiles = list.files('.', pattern = '*rd.bam$', recursive = T)
+csFiles = csFiles[c(1, 2)]
 
 dir.create('subsample')
 
