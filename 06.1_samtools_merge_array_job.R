@@ -35,7 +35,7 @@ cvPartition = '#SBATCH --partition brc'
 # How much memory you need.
 # --mem will define memory per node and
 # --mem-per-cpu will define memory per CPU/core. Choose one of those.
-cvMemoryReserve = '#SBATCH --mem-per-cpu=5000MB'
+cvMemoryReserve = '#SBATCH --mem-per-cpu=10000MB'
 # Turn on mail notification. There are many possible self-explaining values:
 # NONE, BEGIN, END, FAIL, ALL (including all aforementioned)
 # For more values, check "man sbatch"
@@ -84,7 +84,7 @@ writeLines("# Parse parameter file to get variables.
            # 9. Run the program.", oFile)
 
 # sam to bam
-p1 = paste('samtools merge -o', '$merged', '$bamfiles', sep=' ')
+p1 = paste('samtools merge', '$merged', '$bamfiles', sep=' ')
 com1 = paste(p1)
 # create index 
 p1 = paste('samtools index', '$merged', sep=' ')
