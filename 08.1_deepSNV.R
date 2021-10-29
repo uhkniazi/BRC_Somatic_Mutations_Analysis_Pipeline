@@ -13,12 +13,17 @@ library(TxDb.Hsapiens.UCSC.hg38.knownGene)
 dfGenes = read.csv('dataExternal/pilotProjectGeneList.csv', stringsAsFactors = F,
                    header=F)
 # select some genes of interest
-cvSymbols = dfGenes$V1[1:10]
+cvSymbols = dfGenes$V1#[1:10]
+# remove duplicated symbols and whitespace
+cvSymbols = gsub(' ', '', cvSymbols)
+length(cvSymbols)
+cvSymbols = unique(cvSymbols); length(cvSymbols)
 dfGenes = AnnotationDbi::select(org.Hs.eg.db, keys = cvSymbols, 
                                 columns = c('ENTREZID'),
                                 keytype = 'SYMBOL')
 
-dfGenes
+dim(dfGenes)
+dfGenes = na.omit(dfGenes); dim(dfGenes)
 rownames(dfGenes) = dfGenes$ENTREZID
 # get the genes into GRanges object
 oGRgenes = genes(TxDb.Hsapiens.UCSC.hg38.knownGene)
