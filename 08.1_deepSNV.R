@@ -26,8 +26,10 @@ dim(dfGenes)
 dfGenes = na.omit(dfGenes); dim(dfGenes)
 rownames(dfGenes) = dfGenes$ENTREZID
 # get the genes into GRanges object
-oGRgenes = genes(TxDb.Hsapiens.UCSC.hg38.knownGene)
-oGRgenes = oGRgenes[as.character(dfGenes$ENTREZID)]
+oGRgenes = genes(TxDb.Hsapiens.UCSC.hg38.knownGene,
+                 filter=list('gene_id'=dfGenes$ENTREZID))
+table(rownames(dfGenes) %in% names(oGRgenes))
+dfGenes = dfGenes[names(oGRgenes),]
 
 # load meta data
 dfMeta = read.csv('dataExternal/fileList.csv', header=T, stringsAsFactors = F)
@@ -45,12 +47,12 @@ setwd('dataExternal/subsample/')
 
 library(deepSNV)
 loSnv = lapply(seq_along(oGRgenes), function(x){
-  r = deepSNV(test = dfMeta$files[1], control = dfMeta$files[2], 
+  r = deepSNV(test = csFiles[2], control = csFiles[1], 
               regions=oGRgenes[x], q=30, model='betabin')
 })
 setwd(gcswd)
-save(loSnv, file='results/loSnv.rds')
 names(loSnv) = dfGenes[names(oGRgenes),'SYMBOL']
+save(loSnv, file='results/loSnv.rds')
 
 lResults = lapply(loSnv, summary, value='data.frame')
 ## create a data frame
