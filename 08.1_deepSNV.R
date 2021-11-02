@@ -29,8 +29,13 @@ rownames(dfGenes) = dfGenes$ENTREZID
 oGRgenes = genes(TxDb.Hsapiens.UCSC.hg38.knownGene,
                  filter=list('gene_id'=dfGenes$ENTREZID))
 table(rownames(dfGenes) %in% names(oGRgenes))
+## synchronize both objects w.r.t. gene ids
 dfGenes = dfGenes[names(oGRgenes),]
+dim(dfGenes)
+identical(rownames(dfGenes), names(oGRgenes))
 
+### this chunk may vary w.r.t. file paths if run on 
+### rosalind instead of local machine
 # load meta data
 dfMeta = read.csv('dataExternal/fileList.csv', header=T, stringsAsFactors = F)
 str(dfMeta)
@@ -52,17 +57,27 @@ loSnv = lapply(seq_along(oGRgenes), function(x){
 })
 setwd(gcswd)
 names(loSnv) = dfGenes[names(oGRgenes),'SYMBOL']
+## saved after running on rosalind
 save(loSnv, file='results/loSnv.rds')
 
-lResults = lapply(loSnv, summary, value='data.frame')
+## load from here in case this was run on a different machine
+## or continue analysis from here
+load('results/loSnv.rds')
+
+lResults = lapply(loSnv, myDeepSNVSummary, value='data.frame')
 ## create a data frame
 dfResults = do.call(rbind, lResults)
+i = match(rownames(dfResults), dfGenes$SYMBOL)
+identical(rownames(dfResults), dfGenes$SYMBOL[i])
+dfResults$ENTREZID = dfGenes$ENTREZID[i]
+write.csv(dfResults, file='results/pilotDataVariantCalls.csv')
 
+## convert to VCF
 loVcf = lapply(loSnv, myDeepSNVSummary, value='VCF')
 # drop the null values
 loVcf[sapply(loVcf, is.null)] = NULL
 oVcf = do.call(rbind, loVcf)
-
+writeVcf(oVcf, file='results/pilotResults.vcf')
 ######################### 
 ##### test code
 #########################
