@@ -41,28 +41,32 @@ dfMeta = read.csv('dataExternal/fileList.csv', header=T, stringsAsFactors = F)
 str(dfMeta)
 table(dfMeta$Group)
 # match group names with available files
-csFiles = list.files('dataExternal/subsample/', '*.bam$')
+csFiles = list.files('dataExternal/remote/Aligned/', '*rd.bam$')
 f = gsub('_q30_.+', '', csFiles)
 dfMeta = dfMeta[dfMeta$SampleID %in% f,]
 i = match(dfMeta$SampleID, f)
 # sanity check
 identical(dfMeta$SampleID, f[i])
 dfMeta$files = csFiles[i]
-setwd('dataExternal/subsample/')
+setwd('dataExternal/remote/Aligned/')
 
+## start with the 1st test sample and work up to index 7
+csFiles = c(test=dfMeta$files[2], control=dfMeta$files[8])
 library(deepSNV)
 loSnv = lapply(seq_along(oGRgenes), function(x){
-  r = deepSNV(test = csFiles[2], control = csFiles[1], 
+  r = deepSNV(test = csFiles['test'], control = csFiles['control'], 
               regions=oGRgenes[x], q=30, model='betabin')
 })
 setwd(gcswd)
 names(loSnv) = dfGenes[names(oGRgenes),'SYMBOL']
+csSave = paste0('results/', csFiles['test'], '_loSnv.rds')
 ## saved after running on rosalind
-save(loSnv, file='results/loSnv.rds')
+save(loSnv, file=csSave)
 
 ## load from here in case this was run on a different machine
 ## or continue analysis from here
-load('results/loSnv.rds')
+load('results/WTCHG_894903_73115383_q30_fixm_sortc_rd.bam_loSnv.rds')
+iMetaIndex = 1
 
 lResults = lapply(loSnv, myDeepSNVSummary, value='data.frame')
 ## create a data frame
@@ -70,14 +74,16 @@ dfResults = do.call(rbind, lResults)
 i = match(rownames(dfResults), dfGenes$SYMBOL)
 identical(rownames(dfResults), dfGenes$SYMBOL[i])
 dfResults$ENTREZID = dfGenes$ENTREZID[i]
-write.csv(dfResults, file='results/pilotDataVariantCalls.csv')
+cvName = paste0('results/varCall', dfMeta$SampleID[iMetaIndex], '.csv')
+write.csv(dfResults, file=cvName)
 
 ## convert to VCF
 loVcf = lapply(loSnv, myDeepSNVSummary, value='VCF')
 # drop the null values
 loVcf[sapply(loVcf, is.null)] = NULL
 oVcf = do.call(rbind, loVcf)
-writeVcf(oVcf, file='results/pilotResults.vcf')
+cvName = paste0('results/varCall', dfMeta$SampleID[iMetaIndex], '.vcf')
+writeVcf(oVcf, file=cvName)
 ######################### 
 ##### test code
 #########################
