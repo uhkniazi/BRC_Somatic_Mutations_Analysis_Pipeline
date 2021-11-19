@@ -65,14 +65,21 @@ save(loSnv, file=csSave)
 
 ## load from here in case this was run on a different machine
 ## or continue analysis from here
-load('results/WTCHG_894903_73115383_q30_fixm_sortc_rd.bam_loSnv.rds')
-iMetaIndex = 1
+load('results/WTCHG_894903_73075379_q30_fixm_sortc_rd.bam_loSnv.rds')
+iMetaIndex = 7
 
 lResults = lapply(loSnv, myDeepSNVSummary, value='data.frame')
 ## create a data frame
 dfResults = do.call(rbind, lResults)
 i = match(rownames(dfResults), dfGenes$SYMBOL)
 identical(rownames(dfResults), dfGenes$SYMBOL[i])
+## if this is false, it is probably due to multiple hits on single gene
+## otherwise skip this matching section
+s = rownames(dfResults)
+s = gsub('\\.\\d*', '', s)
+i = match(s, dfGenes$SYMBOL)
+identical(s, dfGenes$SYMBOL[i])
+
 dfResults$ENTREZID = dfGenes$ENTREZID[i]
 cvName = paste0('results/varCall', dfMeta$SampleID[iMetaIndex], '.csv')
 write.csv(dfResults, file=cvName)

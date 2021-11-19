@@ -7,8 +7,9 @@ source('header.R')
 
 library(VariantAnnotation)
 
-dfDeepSNV = read.csv('results/pilotDataVariantCalls.csv', header=T, row.names=1)
-oVcf = readVcf('results/pilotResults.vcf', genome = 'hg38')
+## load the relevant files
+dfDeepSNV = read.csv('results/varCallWTCHG_894903_73075379.csv', header=T, row.names=1)
+oVcf = readVcf('results/varCallWTCHG_894903_73075379.vcf', genome = 'hg38')
 header(oVcf)
 ## header slots
 samples(header(oVcf))
@@ -67,8 +68,10 @@ oGRsnps.snploc = oGRsnps
 ## match the names with deepSNV results table
 gr = GRanges(as.character(dfDeepSNV$chr), IRanges(start=dfDeepSNV$pos, width = 1))
 seqlevelsStyle(oGRsnps.snploc) = 'UCSC'
-i = findOverlaps(oGRsnps.snploc, gr)
+i = findOverlaps(oGRsnps.snploc, gr, type='end')
 identical(queryHits(i), subjectHits(i))
+w = which(queryHits(i) != subjectHits(i))
+identical(dfDeepSNV$pos[subjectHits(i)], end(oGRsnps[queryHits(i)]))
 dfDeepSNV$RefSNP_id = oGRsnps.snploc$RefSNP_id
 
 ## location of the variants 
@@ -95,5 +98,5 @@ lSnpLoc = split(oGRlocations$LOCATION, dfSymbol$SYMBOL)
 length(lSnpLoc)
 dfLocations = data.frame(sapply(lSnpLoc, function(x) table(x)))
 
-write.csv(dfDeepSNV, file='results/pilotDataVariantCalls_RefSNP.csv')
-write.csv(dfLocations, file='results/pilotDataVariantLocations.csv')
+write.csv(dfDeepSNV, file='results/varCallWTCHG_894903_73075379_RefSNP.csv')
+write.csv(dfLocations, file='results/varCallWTCHG_894903_73075379Locations.csv')
