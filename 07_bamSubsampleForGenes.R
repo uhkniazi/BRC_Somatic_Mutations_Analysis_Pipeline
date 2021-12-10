@@ -33,7 +33,7 @@ strand(oGRquery) = '*'
 setwd('dataExternal/remote/')
 setwd('Aligned/')
 csFiles = list.files('.', pattern = '*rd.bam$', recursive = T)
-csFiles = csFiles[c(1, 2)]
+#csFiles = csFiles[c(1, 2)]
 
 dir.create('subsample')
 

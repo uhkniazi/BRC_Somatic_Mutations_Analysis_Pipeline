@@ -181,8 +181,10 @@ for (tum in 1:length(tumourbams)) { # Iteratively running the code for the 1-sam
                            ref=NA,
                            mut=cvNucleotides[mutsites[,2]],
                            xfw=NA, xbw=NA, nfw=NA, nbw=NA, mu=NA, pval=NA,rho=NA)
+    # relative frequency/proportion
     mutations$tum_globalvaf = apply(mutsites, 1, function(x) tum_total[x[1],x[2]]) # relative counts
     l = length(cvNucleotides)/2
+    # index for fw and rev strand necleotide position
     indsm = cbind(mutsites[,2], mutsites[,2]+l)
     sites_gr = GRanges(mutations$chr, IRanges(mutations$pos,mutations$pos))
     ### sort this after using human genome BSGenome object
@@ -192,16 +194,19 @@ for (tum in 1:length(tumourbams)) { # Iteratively running the code for the 1-sam
     for (j in 1:nrow(mutations)) {
       
       inds = indsm[j,]
+      # row position (region coordinate) in 1st column of mutsites array/matrix
       norcounts = normcounts_obj[,mutsites[j],] # using all normal panel
       tumcounts = tumcounts_obj[,mutsites[j],] # using single mutant file
       
       # Shearwater test
       pseudo = .Machine$double.eps
+      # counts in tumour sample on fw, rv, and total coverage 
       x.fw = tumcounts[inds[1]]
       x.bw = tumcounts[inds[2]]
       n.fw = sum(tumcounts[1:l])
       n.bw = sum(tumcounts[(l+1):(2*l)])
       
+      # same but for all normal sample panel
       X.fw = sum(norcounts[,inds[1]])
       X.bw = sum(norcounts[,inds[2]])
       N.fw = sum(norcounts[,1:l])
