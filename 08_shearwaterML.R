@@ -84,7 +84,7 @@ logbb = deepSNV:::logbb
 dbetabinom = VGAM::dbetabinom
 cvNucleotides = c("A", "T", "C", "G", "-", "a", "t", "c", "g", 
                   "_")
-ldfResults = lapply(seq_along(oGRgenes), function(iRegion){
+ldfResults = lapply(seq_along(oGRgenes[1:3]), function(iRegion){
   regions = oGRgenes[iRegion]
   
   tumcounts_obj_all = loadAllData(tumourbams, regions, q=10)
@@ -210,15 +210,15 @@ ldfResults = lapply(seq_along(oGRgenes), function(iRegion){
   return(mutations_allsamples)
 })
 
-table(mutations_allsamples$p.adj < 0.01)
+length(ldfResults)
+names(ldfResults) = oGRgenes$SYMBOL[1:3]
+dfResults = do.call(rbind, ldfResults)
+dim(dfResults)
+table(complete.cases(dfResults))
+dfResults = dfResults[complete.cases(dfResults), ]
+table(dfResults$p.adj < 0.01)
+dfResults.adj = dfResults[dfResults$p.adj < 0.01, ]
 
-mutations_allsamples = mutations_allsamples[which(mutations_allsamples$pval<1e-3),] # We don't need to save highly non-significant p-values
-
-cat("outdir=",outdir, "; entry_start=", entry_start,"; entry_end=",entry_end,"\n");
-system(sprintf("mkdir -p %s", outdir))
-cat("Going to write to: ", sprintf("%s/mismatches_%0.0f_%0.0f.txt", outdir, entry_start, entry_end), "\n");
-write.table(mutations_allsamples, file=sprintf("%s/mismatches_%0.0f_%0.0f.txt", outdir, entry_start, entry_end), col.names=T, row.names=F, sep="\t", quote=F)
-cat("Done!!!\n");
 
 ######
 
