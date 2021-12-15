@@ -8,11 +8,14 @@ library(GenomicRanges)
 library(org.Hs.eg.db)
 library(TxDb.Hsapiens.UCSC.hg38.knownGene)
 
+## get the tumor file index from commandline
+args = commandArgs(trailingOnly = TRUE)
+
 # select some genes of interest
 dfGenes = read.csv('dataExternal/pilotProjectGeneList.csv', stringsAsFactors = F,
                    header=F)
 # select some genes of interest
-cvSymbols = dfGenes$V1[1:10]
+cvSymbols = dfGenes$V1[1:3]
 # remove duplicated symbols and whitespace
 cvSymbols = gsub(' ', '', cvSymbols)
 length(cvSymbols)
@@ -40,14 +43,14 @@ dfMeta = read.csv('dataExternal/fileList.csv', header=T, stringsAsFactors = F)
 str(dfMeta)
 table(dfMeta$Group)
 # match group names with available files
-csFiles = list.files('dataExternal/subsample/', '*rd.bam.bam$')
+csFiles = list.files('dataExternal/remote/Aligned/', '*rd.bam$')
 f = gsub('_q30_.+', '', csFiles)
 dfMeta = dfMeta[dfMeta$SampleID %in% f,]
 i = match(dfMeta$SampleID, f)
 # sanity check
 identical(dfMeta$SampleID, f[i])
 dfMeta$files = csFiles[i]
-setwd('dataExternal/subsample/')
+setwd('dataExternal/remote/Aligned/')
 
 ###### adding shearwater code here
 library(deepSNV)
@@ -56,9 +59,9 @@ library(BSgenome.Hsapiens.UCSC.hg38)
 # regions <- oGRgenes
 #counts <- loadAllData(files, regions, q=10)
 
-tumourbams = dfMeta$files[8]
-normalbams = dfMeta$files[-8]
-
+tumourbams = dfMeta$files[args[1]]
+normalbams = dfMeta$files[-c(args[1])]
+cvTumSampleName = as.character(dfMeta$SampleID[args[1]])
 min_totest = 2 # Minimum number of mutant reads in the tumour samples to test a site
 
 # Choose prior, either null:
@@ -84,12 +87,12 @@ logbb = deepSNV:::logbb
 dbetabinom = VGAM::dbetabinom
 cvNucleotides = c("A", "T", "C", "G", "-", "a", "t", "c", "g", 
                   "_")
-ldfResults = lapply(seq_along(oGRgenes[1:3]), function(iRegion){
+ldfResults = lapply(seq_along(oGRgenes), function(iRegion){
   regions = oGRgenes[iRegion]
   
-  tumcounts_obj_all = loadAllData(tumourbams, regions, q=10)
+  tumcounts_obj_all = loadAllData(tumourbams, regions, q=25)
   ## loading the normal counts
-  normcounts_obj = loadAllData(normalbams, regions, q=10)
+  normcounts_obj = loadAllData(normalbams, regions, q=25)
   
   norm_total = apply(normcounts_obj[,,1:5]+normcounts_obj[,,6:10], c(2,3), sum) # Global counts from the reference panel of samples
   norm_total = norm_total/rowSums(norm_total) # Relative global counts (we will exclude from testing any site with >=40% mismatches in the normal panel, removing the reference bases)
@@ -99,7 +102,7 @@ ldfResults = lapply(seq_along(oGRgenes[1:3]), function(iRegion){
     tum_total = tumcounts_obj_all[1,,1:5]+tumcounts_obj_all[1,,6:10]
   }
   tum_total = tum_total/rowSums(tum_total)
-  sample_list = 'tum_test' #sapply(strsplit(tumourbams,"/"), function(x) substr(x[length(x)],1,nchar(x[length(x)])-4)) 
+  sample_list = cvTumSampleName#'tum_test' #sapply(strsplit(tumourbams,"/"), function(x) substr(x[length(x)],1,nchar(x[length(x)])-4)) 
   
   ## Likelihood-Ratio Test
   
@@ -211,91 +214,92 @@ ldfResults = lapply(seq_along(oGRgenes[1:3]), function(iRegion){
 })
 
 length(ldfResults)
-names(ldfResults) = oGRgenes$SYMBOL[1:3]
+names(ldfResults) = oGRgenes$SYMBOL
 dfResults = do.call(rbind, ldfResults)
 dim(dfResults)
 table(complete.cases(dfResults))
 dfResults = dfResults[complete.cases(dfResults), ]
 table(dfResults$p.adj < 0.01)
 dfResults.adj = dfResults[dfResults$p.adj < 0.01, ]
-
-
+n = (paste0('results/', cvTumSampleName, '.csv'))
+setwd(gcswd)
+write.csv(dfResults, file=n)
 ######
 
 
 
 ###################### old code to clean up
 ## start with the 1st test sample and others as controls
-csFiles = c(test=dfMeta$files[8], control=dfMeta$files[-8])
-library(deepSNV)
-loVCF = lapply(seq_along(oGRgenes), function(x){
-  arCounts = loadAllData(csFiles, oGRgenes[x], q=30)
-})
-setwd(gcswd)
-names(loSnv) = dfGenes[names(oGRgenes),'SYMBOL']
-csSave = paste0('results/', csFiles['test'], '_loSnv.rds')
-## saved after running on rosalind
-save(loSnv, file=csSave)
-
-## load from here in case this was run on a different machine
-## or continue analysis from here
-load('results/WTCHG_894903_73075379_q30_fixm_sortc_rd.bam_loSnv.rds')
-iMetaIndex = 7
-
-lResults = lapply(loSnv, myDeepSNVSummary, value='data.frame')
-## create a data frame
-dfResults = do.call(rbind, lResults)
-i = match(rownames(dfResults), dfGenes$SYMBOL)
-identical(rownames(dfResults), dfGenes$SYMBOL[i])
-## if this is false, it is probably due to multiple hits on single gene
-## otherwise skip this matching section
-s = rownames(dfResults)
-s = gsub('\\.\\d*', '', s)
-i = match(s, dfGenes$SYMBOL)
-identical(s, dfGenes$SYMBOL[i])
-
-dfResults$ENTREZID = dfGenes$ENTREZID[i]
-cvName = paste0('results/varCall', dfMeta$SampleID[iMetaIndex], '.csv')
-write.csv(dfResults, file=cvName)
-
-## convert to VCF
-loVcf = lapply(loSnv, myDeepSNVSummary, value='VCF')
-# drop the null values
-loVcf[sapply(loVcf, is.null)] = NULL
-oVcf = do.call(rbind, loVcf)
-cvName = paste0('results/varCall', dfMeta$SampleID[iMetaIndex], '.vcf')
-writeVcf(oVcf, file=cvName)
-
-
-######### old test code
-##################################################################
-source('header.R')
-library(GenomicRanges)
-library(org.Hs.eg.db)
-library(TxDb.Hsapiens.UCSC.hg38.knownGene)
-
-# select some genes of interest
-cvSymbols = c('NOTCH1', 'TP53', 'TP63')
-dfGenes = AnnotationDbi::select(org.Hs.eg.db, keys = cvSymbols,
-                                columns = c('ENTREZID'),
-                                keytype = 'SYMBOL')
-
-dfGenes
-
-# get the genes into GRanges object
-oGRgenes = genes(TxDb.Hsapiens.UCSC.hg38.knownGene)
-oGRgenes = oGRgenes[as.character(dfGenes$ENTREZID)]
-
-library(deepSNV)
-# see here for usage
-# https://www.bioconductor.org/packages/devel/bioc/vignettes/deepSNV/inst/doc/shearwaterML.html
-csFiles = list.files('dataExternal/subsample/', pattern = '*.bam$',full.names = T)
-
-arCounts = loadAllData(csFiles, oGRgenes, q=10)
-pvals = betabinLRT(arCounts)$pvals
-qvals = p.adjust(pvals, method = 'BH')
-dim(qvals) = dim(pvals)
-oVcf = qvals2Vcf(qvals, arCounts, oGRgenes, samples = csFiles, mvcf = TRUE)
-dir.create('results')
-save(oVcf, file='results/oVcf.rds')
-#################################################################
+# csFiles = c(test=dfMeta$files[8], control=dfMeta$files[-8])
+# library(deepSNV)
+# loVCF = lapply(seq_along(oGRgenes), function(x){
+#   arCounts = loadAllData(csFiles, oGRgenes[x], q=30)
+# })
+# setwd(gcswd)
+# names(loSnv) = dfGenes[names(oGRgenes),'SYMBOL']
+# csSave = paste0('results/', csFiles['test'], '_loSnv.rds')
+# ## saved after running on rosalind
+# save(loSnv, file=csSave)
+# 
+# ## load from here in case this was run on a different machine
+# ## or continue analysis from here
+# load('results/WTCHG_894903_73075379_q30_fixm_sortc_rd.bam_loSnv.rds')
+# iMetaIndex = 7
+# 
+# lResults = lapply(loSnv, myDeepSNVSummary, value='data.frame')
+# ## create a data frame
+# dfResults = do.call(rbind, lResults)
+# i = match(rownames(dfResults), dfGenes$SYMBOL)
+# identical(rownames(dfResults), dfGenes$SYMBOL[i])
+# ## if this is false, it is probably due to multiple hits on single gene
+# ## otherwise skip this matching section
+# s = rownames(dfResults)
+# s = gsub('\\.\\d*', '', s)
+# i = match(s, dfGenes$SYMBOL)
+# identical(s, dfGenes$SYMBOL[i])
+# 
+# dfResults$ENTREZID = dfGenes$ENTREZID[i]
+# cvName = paste0('results/varCall', dfMeta$SampleID[iMetaIndex], '.csv')
+# write.csv(dfResults, file=cvName)
+# 
+# ## convert to VCF
+# loVcf = lapply(loSnv, myDeepSNVSummary, value='VCF')
+# # drop the null values
+# loVcf[sapply(loVcf, is.null)] = NULL
+# oVcf = do.call(rbind, loVcf)
+# cvName = paste0('results/varCall', dfMeta$SampleID[iMetaIndex], '.vcf')
+# writeVcf(oVcf, file=cvName)
+# 
+# 
+# ######### old test code
+# ##################################################################
+# source('header.R')
+# library(GenomicRanges)
+# library(org.Hs.eg.db)
+# library(TxDb.Hsapiens.UCSC.hg38.knownGene)
+# 
+# # select some genes of interest
+# cvSymbols = c('NOTCH1', 'TP53', 'TP63')
+# dfGenes = AnnotationDbi::select(org.Hs.eg.db, keys = cvSymbols,
+#                                 columns = c('ENTREZID'),
+#                                 keytype = 'SYMBOL')
+# 
+# dfGenes
+# 
+# # get the genes into GRanges object
+# oGRgenes = genes(TxDb.Hsapiens.UCSC.hg38.knownGene)
+# oGRgenes = oGRgenes[as.character(dfGenes$ENTREZID)]
+# 
+# library(deepSNV)
+# # see here for usage
+# # https://www.bioconductor.org/packages/devel/bioc/vignettes/deepSNV/inst/doc/shearwaterML.html
+# csFiles = list.files('dataExternal/subsample/', pattern = '*.bam$',full.names = T)
+# 
+# arCounts = loadAllData(csFiles, oGRgenes, q=10)
+# pvals = betabinLRT(arCounts)$pvals
+# qvals = p.adjust(pvals, method = 'BH')
+# dim(qvals) = dim(pvals)
+# oVcf = qvals2Vcf(qvals, arCounts, oGRgenes, samples = csFiles, mvcf = TRUE)
+# dir.create('results')
+# save(oVcf, file='results/oVcf.rds')
+# #################################################################
