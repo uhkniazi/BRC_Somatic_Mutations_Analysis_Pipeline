@@ -1,6 +1,6 @@
 #!/bin/bash -l
 #SBATCH --job-name=rbatch_1
-#SBATCH --array=1-3
+#SBATCH --array=1-8
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --time=7-00:00:00

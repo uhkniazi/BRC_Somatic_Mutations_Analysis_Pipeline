@@ -9,13 +9,14 @@ library(org.Hs.eg.db)
 library(TxDb.Hsapiens.UCSC.hg38.knownGene)
 
 ## get the tumor file index from commandline
-args = commandArgs(trailingOnly = TRUE)
-
+args = as.numeric(commandArgs(trailingOnly = TRUE))
+print(args)
+#stop()
 # select some genes of interest
 dfGenes = read.csv('dataExternal/pilotProjectGeneList.csv', stringsAsFactors = F,
                    header=F)
 # select some genes of interest
-cvSymbols = dfGenes$V1[1:3]
+cvSymbols = dfGenes$V1
 # remove duplicated symbols and whitespace
 cvSymbols = gsub(' ', '', cvSymbols)
 length(cvSymbols)
