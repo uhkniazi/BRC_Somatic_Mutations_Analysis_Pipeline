@@ -88,8 +88,8 @@ logbb = deepSNV:::logbb
 dbetabinom = VGAM::dbetabinom
 cvNucleotides = c("A", "T", "C", "G", "-", "a", "t", "c", "g", 
                   "_")
-ldfResults = lapply(seq_along(oGRgenes), function(iRegion){
-  regions = oGRgenes[iRegion]
+myShearWaterML = function(iGeneIndex){
+  regions = oGRgenes[iGeneIndex]
   
   tumcounts_obj_all = loadAllData(tumourbams, regions, q=25)
   ## loading the normal counts
@@ -202,6 +202,7 @@ ldfResults = lapply(seq_along(oGRgenes), function(iRegion){
     }
   }
   
+  
   # Fa8: not testing T>T or A>A (related to alt homozygotes):
   if(nrow(mutations_allsamples) > 0) { # "If" suggested by Andrew 
     mutations_allsamples <- mutations_allsamples[which(mutations_allsamples$ref!=mutations_allsamples$mut),] 
@@ -212,10 +213,18 @@ ldfResults = lapply(seq_along(oGRgenes), function(iRegion){
   mutations_allsamples$ENTREZID = regions$gene_id
   mutations_allsamples$SYMBOL = regions$SYMBOL
   return(mutations_allsamples)
+}
+
+ldfResults = lapply(seq_along(oGRgenes), function(iRegion){
+  tryCatch(myShearWaterML(iRegion), error=function(e) return(NA))
 })
 
 length(ldfResults)
 names(ldfResults) = oGRgenes$SYMBOL
+# remove any NA genes i.e. where trycatch sent an error
+# this can happen when no mutations were detected on a gene
+ldfResults[is.na(ldfResults)] = NULL
+length(ldfResults)
 dfResults = do.call(rbind, ldfResults)
 dim(dfResults)
 table(complete.cases(dfResults))
